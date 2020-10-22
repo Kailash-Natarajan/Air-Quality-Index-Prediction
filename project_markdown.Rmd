@@ -1,0 +1,282 @@
+---
+title: "Air Quality Index Prediction"
+author: "Kailash Natarajan"
+date: "01/10/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Air Quality Index Prediction
+```{r}
+```
+In this project, we will be predicting CO, SO2, NO2 index values for the next 5 days based on the previous 30 days of data. This prediction will be only for Chennai city.
+The file with data collected in 2020 for all major cities is available at the link below. We will be extracting data for Chennai city from that.
+
+```{r echo=FALSE,comment=""}
+print("https://aqicn.org/data-platform/covid19/report/18248-4d650f91/2020")
+```
+```{r}
+```
+# Download the file automatically
+```{r}
+#download.file("https://aqicn.org/data-platform/covid19/report/18248-4d650f91/2020",
+             # destfile = "waqi-covid19-airqualitydata-2020.csv")
+```
+# Reading the file
+
+Read the file into a variable to make use of it.
+```{r}
+#Reading the downloaded .csv file properly.
+aqi<-read.csv(file='waqi-covid19-airqualitydata-2020.csv',sep=",",skip=4,header=TRUE)
+```
+# Subset the required data
+
+Our dataset contains air quality index data for every major city in the world. But our focus is only on Chennai and we make our prediction only for that. So we extract the values only for Chennai.
+```{r}
+#Subset data pertaining to chennai only
+chennai<-aqi[aqi[,3]=="Chennai",]
+chennai<-as.data.frame(chennai)
+```
+# Sorting the data
+
+We want our data to be sorted by date because our prediction model will depend on it.
+```{r}
+#sorting the data based on date
+chennai<-chennai[order(chennai$Date),]
+```
+# Subset CO, SO2, NO2
+
+The air quality index dataset contains various parameters of measurement. We will use only CO,SO2 and NO2 parameters for the sake of this project.
+```{r}
+#Subset data that for CO, SO2,NO2 only
+ch_co<-chennai[chennai[,4]=="co",c(1,3,4,6,7,8)]
+ch_so2<-chennai[chennai[,4]=="so2",c(1,3,4,6,7,8)]
+ch_no2<-chennai[chennai[,4]=="no2",c(1,3,4,6,7,8)]
+```
+# Getting to know the data
+
+This will show us the head of the data for each of co, so2 and no2. This will make it clear for the reader to understand the data.
+
+### Contents of CO dataset:
+```{r}
+head(ch_co)
+dim(ch_co)
+```
+### Contents of SO2 dataset:
+```{r}
+head(ch_so2)
+dim(ch_so2)
+```
+### Contents of NO2 dataset:
+```{r}
+head(ch_no2)
+dim(ch_no2)
+```
+# Retrieving 30 days of data and making a Regression Line
+
+This piece of code subsets the last 30 days of data for use. These air quality parameters are hugely impacted by external weather and seasons. So it makes sense to include only the recent readings, and thus reduce the impact of weather and seasons on our prediction. 
+
+It also does the linear modeling for the prediction. This will result in a regression line. 
+
+```{r}
+#Subsetting 30 days of data and developing regression line
+start=dim(ch_co)[1]-29
+end=dim(ch_co)[1]
+co<-data.frame(
+  x=1:30,
+  lo=ch_co[start:end,4],
+  hi=ch_co[start:end,5],
+  med=ch_co[start:end,6]
+)
+so2<-data.frame(
+  x=1:30,
+  lo=ch_so2[start:end,4],
+  hi=ch_so2[start:end,5],
+  med=ch_so2[start:end,6]
+)
+no2<-data.frame(
+  x=1:30,
+  lo=ch_no2[start:end,4],
+  hi=ch_no2[start:end,5],
+  med=ch_no2[start:end,6]
+)
+
+co_lo_line=lm(lo~x,data=co)
+co_hi_line=lm(hi~x,data=co)
+co_med_line=lm(med~x,data=co)
+
+so2_lo_line=lm(lo~x,data=so2)
+so2_hi_line=lm(hi~x,data=so2)
+so2_med_line=lm(med~x,data=so2)
+
+no2_lo_line=lm(lo~x,data=no2)
+no2_hi_line=lm(hi~x,data=no2)
+no2_med_line=lm(med~x,data=no2)
+
+```
+# Linear Modelling outcomes
+```{r}
+co_lo_line
+co_med_line
+co_hi_line
+
+so2_lo_line
+so2_med_line
+so2_hi_line
+
+no2_lo_line
+no2_med_line
+no2_hi_line
+```
+
+```{r}
+head(co)
+```
+
+```{r}
+head(so2)
+```
+
+```{r}
+head(no2)
+```
+# Plotting the data
+
+This code is added to plot each of the index separately, to help us visualize the data given. We also include the regression line with the points in the plot to get an idea and visualise the trend.
+```{r}
+#Plot for CO
+##30 days of data
+xval=1:30      
+#This is to cover 95% of high values. We don't want to plot all the points as 
+#the low values may become less significant in the plot  
+yval=seq(1,as.integer(quantile(co$hi,probs=0.95)[[1]])+1,length=30)  
+##Generating random values to open a blank plot window
+plot(xval,yval,type="n",xlab="Day Number",ylab="Magnitude of Index",main="CO index")
+points(co$hi,col="red",type="o",pch=17,lty=4)
+points(co$lo,col="blue",type="o",pch=19,lty=4)
+points(co$med,col="green",type="o",pch=21,lty=4)
+legend("topright",col=c("red","green","blue"),legend=c("High","Median","Low"),
+       lty=c(4,4,4),bg="white")
+abline(co_lo_line,col="blue",lwd=1.5)
+abline(co_med_line,col="green",lwd=1.5)
+abline(co_hi_line,col="red",lwd=1.5)
+```
+
+```{r}
+#Plot for SO2
+##30 days of data
+xval=1:30      
+#This is to cover 95% of high values. We don't want to plot all 
+#the points as the low values may become less significant in the plot  
+yval=seq(1,as.integer(quantile(so2$hi,probs=0.95)[[1]])+1,length=30)  
+##Generating random values to open a blank plot window
+plot(xval,yval,type="n",xlab="Day Number",ylab="Magnitude of Index",main="SO2 index")
+points(so2$hi,col="red",type="o",pch=17,lty=4)
+points(so2$lo,col="blue",type="o",pch=19,lty=4)
+points(so2$med,col="green",type="o",pch=21,lty=4)
+legend("topright",col=c("red","green","blue"),legend=c("High","Median","Low"),
+       lty=c(4,4,4),bg="white")
+abline(so2_lo_line,col="blue",lwd=1.5)
+abline(so2_med_line,col="green",lwd=1.5)
+abline(so2_hi_line,col="red",lwd=1.5)
+```
+
+```{r}
+#Plot for NO2
+##30 days of data
+xval=1:30    
+#This is to cover 95% of high values. We don't want to plot all the points as 
+#the low values may become less significant in the plot  
+yval=seq(1,as.integer(quantile(no2$hi,probs=0.95)[[1]])+1,length=30)  
+##Generating random values to open a blank plot window
+plot(xval,yval,type="n",xlab="Day Number",ylab="Magnitude of Index",main="NO2 index")
+points(no2$hi,col="red",type="o",pch=17,lty=4)
+points(no2$lo,col="blue",type="o",pch=19,lty=4)
+points(no2$med,col="green",type="o",pch=21,lty=4)
+legend("topright",col=c("red","green","blue"),legend=c("High","Median","Low"),
+       lty=c(4,4,4),bg="white")
+abline(no2_lo_line,col="blue",lwd=1.5)
+abline(no2_med_line,col="green",lwd=1.5)
+abline(no2_hi_line,col="red",lwd=1.5)
+```
+
+```{r}
+```
+# Analysis from plotting
+
+From the plots, we can make some conclusions that:
+ -> Highest CO values are getting higher day by day.
+ -> Median CO values are on slightly increasing side. So we can conclude that CO is 
+    consistently increasing in Chennai.
+ -> Highest values are consistently decreasing, but the median is increasing.
+    So, we cannot make a direct conclusion on SO2 emissions in Chennai.
+ -> NO2 highest values also seems to be on the decreasing side even if 
+    the median is increasing. So here also conclusions cannot be made directly.
+```{r}
+```
+# Prediction
+
+This code will predict the next 5 days values for each of the 3 index which we chose. The printed output will be at the end.
+```{r}
+#equation of regression line
+#5 days prediction
+
+co_lo_pred=numeric()
+co_hi_pred=numeric()
+co_med_pred=numeric()
+so2_lo_pred=numeric()
+so2_hi_pred=numeric()
+so2_med_pred=numeric()
+no2_lo_pred=numeric()
+no2_hi_pred=numeric()
+no2_med_pred=numeric()
+
+#co
+for(i in 1:5){
+co_lo_pred[i]=as.numeric(co_lo_line[[1]][2])*(i+30)+as.numeric(co_lo_line[[1]][1])
+co_hi_pred[i]=as.numeric(co_hi_line[[1]][2])*(i+30)+as.numeric(co_hi_line[[1]][1])
+co_med_pred[i]=as.numeric(co_med_line[[1]][2])*(i+30)+as.numeric(co_med_line[[1]][1])
+}
+#so2
+for(i in 1:5){
+so2_lo_pred[i]=as.numeric(so2_lo_line[[1]][2])*(i+30)+as.numeric(so2_lo_line[[1]][1])
+so2_hi_pred[i]=as.numeric(so2_hi_line[[1]][2])*(i+30)+as.numeric(so2_hi_line[[1]][1])
+so2_med_pred[i]=as.numeric(so2_med_line[[1]][2])*(i+30)+as.numeric(so2_med_line[[1]][1])
+}
+
+#no2
+for(i in 1:5){
+no2_lo_pred[i]=as.numeric(no2_lo_line[[1]][2])*(i+30)+as.numeric(no2_lo_line[[1]][1])
+no2_hi_pred[i]=as.numeric(no2_hi_line[[1]][2])*(i+30)+as.numeric(no2_hi_line[[1]][1])
+no2_med_pred[i]=as.numeric(no2_med_line[[1]][2])*(i+30)+as.numeric(no2_med_line[[1]][1])
+}
+pred_co=data.frame(
+  lo=co_lo_pred,
+  hi=co_hi_pred,
+  med=co_med_pred
+)
+pred_so2=data.frame(
+  lo=so2_lo_pred,
+  hi=so2_hi_pred,
+  med=so2_med_pred
+)
+pred_no2=data.frame(
+  lo=no2_lo_pred,
+  hi=no2_hi_pred,
+  med=no2_med_pred
+)
+```
+## Prediction values of CO for the next 5 days
+```{r comment=""}
+pred_co
+```
+## Prediction values of SO2 for the next 5 days
+```{r comment=""}
+pred_so2
+```
+## Prediction values of NO2 for the next 5 days
+```{r comment=""}
+pred_no2
+```
